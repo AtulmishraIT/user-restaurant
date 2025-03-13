@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # user-restaurant
 =======
 # React + Vite
@@ -12,3 +13,6 @@ Currently, two official plugins are available:
 "# Restaurant-user" 
 "# user-restaurant" 
 >>>>>>> 1499edd (first commit)
+=======
+# user-restaurant
+>>>>>>> 77df47e6ea7a940b46676365ab40429fc1c61b85
