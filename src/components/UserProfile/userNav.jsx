@@ -5,7 +5,7 @@ import Payment from "./payment";
 import Logout from "./Logout";
 import { useNavigate } from "react-router-dom";
 import UserProfile from './UserProfile';
-import Order from './Order';
+import Order from './order';
 import Contact from './contact';
 import Addresses from './Addresses';
 import { motion } from "framer-motion";
