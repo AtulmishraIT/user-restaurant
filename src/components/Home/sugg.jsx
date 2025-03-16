@@ -122,6 +122,7 @@ function Sugg(props) {
       },
     ],
   };
+  //commit
   return (
     <div className="w-full mx-2 xl:w-[1500px] xl:px-14">
     <div className="md:mt-24 mt-20 w-[445px] max-md:w-full md:w-full">
