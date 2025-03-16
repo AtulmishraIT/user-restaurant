@@ -107,7 +107,7 @@ function Search() {
                 <img
                   className="p-8 max-sm:p-3 max-sm:h-48 max-sm:w-52 max-sm:object-cover w-full h-72 object-cover"
                   src={data1.image}
-                  alt="product image"
+                  alt="product image1"
                 />
               </a>
               <div className="px-5 pb-5 -mt-3 max-sm:-mt-0 max-sm:py-3">
