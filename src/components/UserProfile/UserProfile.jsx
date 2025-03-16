@@ -1,321 +1,525 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Link } from "react-router-dom";
-import UserNav from "./userNav";
-import { motion, useScroll } from "framer-motion";
+"use client"
+
+import { useEffect, useState } from "react"
+import axios from "axios"
+import UserNav from "./userNav"
+import { motion, useScroll, AnimatePresence } from "framer-motion"
+import { User, Phone, Mail, Edit, X, CheckCircle, AlertCircle, Send, Lock, ArrowLeft, Loader } from "lucide-react"
 
 const UserProfile = () => {
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isChanged, setIsChanged] = useState(false);
-  const [isEmailChange, setIsEmailChange] = useState(false);
-  const [isMobChange, setIsMobChange] = useState(false);
-  const [isVerify, setIsVerify] = useState(false);
-  const [email1, setEmail] = useState("");
-  const [mobno1, setMobno] = useState("");
-  const [isScroll, setIsScroll] = useState(false);
-  const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
-  const [otp, setOtp] = useState("");
-  const { scrollY } = useScroll();
-  const email = localStorage.getItem("userEmail");
+  const [userData, setUserData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [isChanged, setIsChanged] = useState(false)
+  const [isEmailChange, setIsEmailChange] = useState(false)
+  const [isMobChange, setIsMobChange] = useState(false)
+  const [isVerify, setIsVerify] = useState(false)
+  const [email1, setEmail] = useState("")
+  const [mobno1, setMobno] = useState("")
+  const [isScroll, setIsScroll] = useState(false)
+  const [error, setError] = useState(null)
+  const [message, setMessage] = useState(null)
+  const [otp, setOtp] = useState("")
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [verifyingOtp, setVerifyingOtp] = useState(false)
+  const { scrollY } = useScroll()
 
   // Fetch user data from the backend
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Replace with the logged-in user's email (e.g., from localStorage or context)
-        const email = localStorage.getItem("userEmail"); // Example: Get email from localStorage
+        const email = localStorage.getItem("userEmail")
         if (!email) {
-          throw new Error("User email not found");
+          throw new Error("User email not found")
         }
-        const response = await axios.get(`http://localhost:8000/user/${email}`);
-        setUserData(response.data);
-        setEmail(response.data.email);
-        setMobno(response.data.mobno);
+        const response = await axios.get(`http://localhost:8000/user/${email}`)
+        setUserData(response.data)
+        setEmail(response.data.email)
+        setMobno(response.data.mobno)
       } catch (err) {
-        setError(err.message || "Failed to fetch user data");
+        setError(err.message || "Failed to fetch user data")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [])
 
   useEffect(() => {
     const unsubscribe = scrollY.onChange((latest) => {
-      if (latest < 140) {
-        setIsScroll(true);
-      } else {
-        setIsScroll(false);
-      }
-    });
+      setIsScroll(latest < 140)
+    })
 
-    return () => unsubscribe();
-  }, [scrollY]);
+    return () => unsubscribe()
+  }, [scrollY])
 
-  
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-100">
+        <div className="flex flex-col items-center">
+          <Loader className="w-12 h-12 text-green-600 animate-spin" />
+          <p className="mt-4 text-gray-600 font-medium">Loading your profile...</p>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
+          <div className="flex items-center justify-center text-red-500 mb-4">
+            <AlertCircle className="w-16 h-16" />
+          </div>
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Error Loading Profile</h2>
+          <p className="text-gray-600 text-center mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
   }
-  
+
   const handleEditProfile = () => {
-    setIsChanged(!isChanged);
-    setIsEmailChange(false);
-    setIsMobChange(false);
-    setIsVerify(false);
-  };
+    setIsChanged(!isChanged)
+    setIsEmailChange(false)
+    setIsMobChange(false)
+    setIsVerify(false)
+    setError(null)
+    setMessage(null)
+  }
+
   const handleCloseModal = (e) => {
     if (e.target.id === "modal-overlay") {
-      setIsChanged(false);
-      setIsEmailChange(false);
-      setIsMobChange(false);
-      setIsVerify(false);
+      setIsChanged(false)
+      setIsEmailChange(false)
+      setIsMobChange(false)
+      setIsVerify(false)
     }
-  };
+  }
 
   const handleVerify = async () => {
-    setIsVerify(!isVerify);
+    setIsVerify(!isVerify)
+    setSendingOtp(true)
+    setError(null)
+    setMessage(null)
+
     try {
       const response = await axios.post("http://localhost:8000/send-otp", {
         email: userData.email,
-      });
-      setMessage(response.data.message);
+      })
+      setMessage(response.data.message)
     } catch (error) {
-      setError(error.response.data.message || "Failed to send OTP");
+      setError(error.response?.data?.message || "Failed to send OTP")
+    } finally {
+      setSendingOtp(false)
     }
-  };
+  }
 
   const handleSendOtp = async () => {
+    setVerifyingOtp(true)
+    setError(null)
+    setMessage(null)
+
     try {
       const response = await axios.post("http://localhost:8000/verify-otp", {
         email: userData.email,
         otp,
         newMobNo: isMobChange ? mobno1 : null,
         newEmail: isEmailChange ? email1 : null,
-      });
-      if(email1 !== null){
-        alert("You need to login again");
-        window.location.reload();
-        window.location.href = "/"
-      }
-      setMessage(response.data.message);
-      setIsChanged(false);
-      setIsEmailChange(false);
-      setIsMobChange(false);
-      setIsVerify(false);
-    } catch (error) {
-      setError(error.response.data.message || "Failed to verify OTP");
-      console.log(error)
-    }
-  };
-  
-  const handleEmailChange = () => {
-    setIsEmailChange(!isEmailChange);
-    setIsMobChange(false);
-  };
-  const handleMobChange = () => {
-    setIsMobChange(!isMobChange);
-    setIsEmailChange(false);
-  };
+      })
 
- 
-  
+      if (isEmailChange && email1 !== userData.email) {
+        setMessage("Email updated successfully. Please login again.")
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 2000)
+      } else {
+        setMessage(response.data.message)
+        setTimeout(() => {
+          setIsChanged(false)
+          setIsEmailChange(false)
+          setIsMobChange(false)
+          setIsVerify(false)
+          window.location.reload()
+        }, 1500)
+      }
+    } catch (error) {
+      setError(error.response?.data?.message || "Failed to verify OTP")
+    } finally {
+      setVerifyingOtp(false)
+    }
+  }
+
+  const handleEmailChange = () => {
+    setIsEmailChange(!isEmailChange)
+    setIsMobChange(false)
+    setError(null)
+    setMessage(null)
+  }
+
+  const handleMobChange = () => {
+    setIsMobChange(!isMobChange)
+    setIsEmailChange(false)
+    setError(null)
+    setMessage(null)
+  }
+
   return (
-    <div className="bg-slate-600 overflow-hidden text-white w-full absolute p-10 -mr-20 scroll-md">
-    <div className="max-w-[1320px] max-h-full mx-auto mt-20 visited:bg-gray-100 ">
-      {userData ? (
-        <div className="flex flex-col md:flex-row ml-4 transition ease-in-out duration-500 justify-between items-center w-full h-fit-content p-10 bg-transparent rounded-md">
-          <div className="mb-4 md:mb-0">
-            <p className="text-3xl font-bold font-sans">{userData.name}</p>
-            <div className="flex gap-3 flex-wrap">
-              <p>{userData.mobno}</p>
-              <strong>.</strong>
-              <p>{userData.email}</p>
+    <div className="min-h-screen -mr-8 bg-gradient-to-b from-slate-700 to-slate-900 text-white">
+      {/* Header Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+        {userData ? (
+          <div className="bg-slate-800 rounded-xl shadow-xl overflow-hidden">
+            <div className="p-8">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="flex items-center gap-6">
+                  <div className="bg-gradient-to-br from-green-400 to-blue-500 p-1 rounded-full">
+                    <div className="bg-slate-800 rounded-full p-2">
+                      <User className="w-16 h-16 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold">{userData.name}</h1>
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center text-slate-300">
+                        <Phone className="w-4 h-4 mr-2" />
+                        <span>{userData.mobno}</span>
+                      </div>
+                      <div className="flex items-center text-slate-300">
+                        <Mail className="w-4 h-4 mr-2" />
+                        <span>{userData.email}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleEditProfile}
+                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-green-500/20"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Profile
+                </button>
+              </div>
             </div>
           </div>
-          <div>
-            <button
-              onClick={handleEditProfile}
-              type="button"
-              className="bg-transparent border-2 px-5 py-3 font-sans font-bold text-sm mr-5 hover:bg-green-500 hover:text-white"
-            >
-              EDIT PROFILE
-            </button>
-            {(isChanged && (
-              <div
-                id="modal-overlay"
-                className="fixed inset-0 z-50 text-black bg-black bg-opacity-50 flex justify-center items-center mx-auto  transition-opacity duration-1000 ease-in-out"
-                onClick={handleCloseModal}
-              >
-                <motion.div
-                initial={{opacity:1, x:600}}
-                animate={{opacity:1, x:0}}
-                exit={{y:-600}}
-                transition={{duration:0.3,delay:0.1}}
-                className="max-sm:relative max-sm:max-h-fit max-sm:pb-5 max-sm:max-w-full absolute h-screen w-[580px] top-0 right-0 bg-white p-2 mx-auto">
-                  <div className="flex justify-between items-center -mt-2">
-                  <button
-                    onClick={handleEditProfile}
-                    className="text-center flex justify-center items-center m-5 gap-1 font-bold text-lg focus:opacity-40"
-                  >
-                    <img
-                      className="h-4 w-4 m-3 max-sm:absolute font-extralight   max-sm:right-0 max-sm:top-0"
-                      src="https://cdn-icons-png.flaticon.com/128/1828/1828778.png"
-                      alt=""
-                    />
-                    <p className="text-lg font-sans">Edit Profile</p>
-                  </button>
-                  </div>
-                  <div className="max-w-[380px] max-sm:max-w-auto max-sm:mx-auto overflow-hidden ">
-                  <p className="text-green-500 text-center bg-black">{message}</p>
-                    <div className="mt-5 ml-8 max-sm:ml-auto flex flex-col gap-3 ">
-                      <h1 className="text-xl">Phone Number</h1>
-                      {isMobChange ? (
-                        <div className="mb-20 h-10 w-full">
-                          {(isVerify && (
-                            <div className="mt-2 my-20 flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={mobno1}
-                                onChange={(e) => setMobno(e.target.value)}
-                                className="w-full h-full px-2 p-3 text-xl"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Enter OTP"
-                                onChange={(e) => setOtp(e.target.value)}
-                                className="w-full h-full p-3 px-2 text-xl"
-                              />
-                              <button onClick={handleSendOtp} className="text-white text-xl px-4 py-2 w-full bg-orange-500 mt-2 shadow-md hover:shadow-xl">
-                                CONFIRM
-                              </button>
-                            </div>
-                          )) || (
-                            <div className="mt-2 flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={mobno1}
-                                onChange={(e) => setMobno(e.target.value)}
-                                className="w-full h-full px-2 p-4 text-xl"
-                              />
-                              <button
-                                onClick={handleVerify}
-                                className="text-white h-full mb-20 text-xl px-4 py-2 w-full bg-orange-500 mt-2 shadow-md hover:shadow-xl"
-                              >
-                                Send OTP
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="flex justify-between overflow-hidden">
-                          <h3 className="opacity-100 font-extralight text-lg">
-                            {userData.mobno}
-                          </h3>
-                          <button
-                            onClick={handleMobChange}
-                            className="text-orange-600 font-bold text-sm"
-                          >
-                            CHANGE
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                    <hr className="h-px my-5 mx-9 bg-gray-200 border-0 dark:bg-gray-300" />
-                    <div className="mt-5 ml-8 flex flex-col gap-3 max-sm:ml-auto">
-                      <h1 className="text-xl">Email id</h1>
-                      {isEmailChange ? (
-                        <div className="mb-20 h-full w-full">
-                          {(isVerify && (
-                            <div className="mt-2 my-20 flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={email1}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full h-full px-2 p-3 text-xl"
-                              />
-                              <input
-                                type="text"
-                                placeholder="Enter OTP"
-                                onChange={(e) => setOtp(e.target.value)}
-                                className="w-full h-full p-3 px-2 text-xl"
-                              />
-                              <button onClick={handleSendOtp} className="text-white text-xl px-4 py-2 w-full bg-orange-500 mt-2 shadow-md hover:shadow-xl">
-                                CONFIRM
-                              </button>
-                            </div>
-                          )) || (
-                            <div className="mt-2 flex flex-col gap-2">
-                              <input
-                                type="text"
-                                value={email1}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full h-full px-2 p-4 text-xl"
-                              />
-                              <button
-                                onClick={handleVerify}
-                                className="text-white h-full mb-20 text-xl px-4 py-2 w-full bg-orange-500 mt-2 shadow-md hover:shadow-xl"
-                              >
-                                Send OTP
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="flex justify-between overflow-hidden">
-                          <h3 className="opacity-100 font-extralight text-lg">
-                            {userData.email}
-                          </h3>
-                          <button
-                            onClick={handleEmailChange}
-                            className="text-orange-600 font-bold text-sm"
-                          >
-                            CHANGE
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>{" "}
-              </div>
-            )) ||
-              null}
+        ) : (
+          <div className="bg-slate-800 rounded-xl shadow-xl p-8 text-center">
+            <p className="text-xl text-slate-300">No user data found.</p>
           </div>
-        </div>
-      ) : (
-        <p>No user data found.</p>
-      )}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p className="bg-black">{message}</p>}
-    </div>
-    <motion.div
-      className="w-screen -ml-14 h-full flex justify-center items-center"
-      initial={{opacity:1, x:0}}
-      animate={{
-        backgroundColor: isScroll ? "transparent" : "white", // Animate width based on scroll
-        opacity: isScroll ? 0.9 : 1.5,
-      }}
-      transition={{ type: "tween", // Linear animation
-        duration: 1, // Duration of the animation in seconds
-        delay: 0,  }} // Smooth transition
-    >
-      <div className="w-fit bg-white p-10">
-      <div
-        className="bg-white text-black w-fit overflow-hidden flex gap-y-32 items-center justify-center"
-      >
-        <UserNav />
-      </div>
-      </div>
-    </motion.div>
-    </div>
-  );
-};
+        )}
 
-export default UserProfile;
-//commit
+        {/* Error and Success Messages */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-3 rounded-lg flex items-center"
+            >
+              <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+              <p>{error}</p>
+            </motion.div>
+          )}
+
+          {message && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 bg-green-500/10 border border-green-500/20 text-green-500 px-4 py-3 rounded-lg flex items-center"
+            >
+              <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+              <p>{message}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* User Navigation Section */}
+      <motion.div
+        className="bg-white rounded-t-3xl shadow-2xl"
+        initial={{ opacity: 0.9 }}
+        animate={{
+          opacity: isScroll ? 0.95 : 1,
+        }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <UserNav />
+        </div>
+      </motion.div>
+
+      {/* Edit Profile Modal */}
+      <AnimatePresence>
+        {isChanged && (
+          <div
+            id="modal-overlay"
+            className="fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex justify-end items-start"
+            onClick={handleCloseModal}
+          >
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="h-screen w-full max-w-md bg-white text-gray-800 shadow-2xl overflow-y-auto"
+            >
+              <div className="sticky top-0 bg-white z-10 border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ArrowLeft className="w-5 h-5 cursor-pointer" onClick={handleEditProfile} />
+                  <h2 className="text-xl font-semibold">Edit Profile</h2>
+                </div>
+                <button onClick={handleEditProfile} className="text-gray-500 hover:text-gray-700 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-8">
+                {/* Success/Error Messages */}
+                <AnimatePresence>
+                  {message && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center"
+                    >
+                      <CheckCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+                      <p>{message}</p>
+                    </motion.div>
+                  )}
+
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center"
+                    >
+                      <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+                      <p>{error}</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Phone Number Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-gray-500" />
+                    <h3 className="text-lg font-medium">Phone Number</h3>
+                  </div>
+
+                  {isMobChange ? (
+                    <div className="space-y-4">
+                      {isVerify ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">New Phone Number</label>
+                            <input
+                              type="text"
+                              value={mobno1}
+                              onChange={(e) => setMobno(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="Enter new phone number"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">Verification Code</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Enter OTP"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                maxLength={6}
+                              />
+                              <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={handleSendOtp}
+                            disabled={verifyingOtp}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-70"
+                          >
+                            {verifyingOtp ? (
+                              <>
+                                <Loader className="w-5 h-5 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-5 h-5" />
+                                Verify & Update
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">New Phone Number</label>
+                            <input
+                              type="text"
+                              value={mobno1}
+                              onChange={(e) => setMobno(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="Enter new phone number"
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleVerify}
+                            disabled={sendingOtp}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-70"
+                          >
+                            {sendingOtp ? (
+                              <>
+                                <Loader className="w-5 h-5 animate-spin" />
+                                Sending OTP...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-5 h-5" />
+                                Send Verification Code
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <span className="text-gray-700">{userData.mobno}</span>
+                      <button
+                        onClick={handleMobChange}
+                        className="text-green-600 font-medium hover:text-green-700 transition-colors"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-200 my-6"></div>
+
+                {/* Email Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-gray-500" />
+                    <h3 className="text-lg font-medium">Email Address</h3>
+                  </div>
+
+                  {isEmailChange ? (
+                    <div className="space-y-4">
+                      {isVerify ? (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">New Email Address</label>
+                            <input
+                              type="email"
+                              value={email1}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="Enter new email address"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">Verification Code</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Enter OTP"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                maxLength={6}
+                              />
+                              <Lock className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={handleSendOtp}
+                            disabled={verifyingOtp}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-70"
+                          >
+                            {verifyingOtp ? (
+                              <>
+                                <Loader className="w-5 h-5 animate-spin" />
+                                Verifying...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-5 h-5" />
+                                Verify & Update
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">New Email Address</label>
+                            <input
+                              type="email"
+                              value={email1}
+                              onChange={(e) => setEmail(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                              placeholder="Enter new email address"
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleVerify}
+                            disabled={sendingOtp}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-70"
+                          >
+                            {sendingOtp ? (
+                              <>
+                                <Loader className="w-5 h-5 animate-spin" />
+                                Sending OTP...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="w-5 h-5" />
+                                Send Verification Code
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <span className="text-gray-700">{userData.email}</span>
+                      <button
+                        onClick={handleEmailChange}
+                        className="text-green-600 font-medium hover:text-green-700 transition-colors"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default UserProfile
+

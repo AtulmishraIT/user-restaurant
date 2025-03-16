@@ -1,356 +1,403 @@
-import React, { useEffect, useState } from "react";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
-import {motion,AnimatePresence} from 'framer-motion'
-import axios from "axios";
+"use client"
 
-function Cards() {
-  const [category, setCategory] = useState("");
-  const [cart, setCart] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [fav, setFav] = useState({});
-  const [foodData1, setFoodData1] = useState();
-  const email = localStorage.getItem("userEmail");
+import { useEffect, useState } from "react"
+import Skeleton from "react-loading-skeleton"
+import "react-loading-skeleton/dist/skeleton.css"
+import { motion, AnimatePresence } from "framer-motion"
+import axios from "axios"
+import "boxicons/css/boxicons.min.css"
 
-  useEffect(()=>{
-    const GetFoodData = async () => {
-    try {
-      const  response = await axios.get("http://localhost:8000/getFoodData");
-      setFoodData1(Array.isArray(response.data.foodItems) ? response.data.foodItems : []);
-    } catch (error) {
-      console.log(error);
-    }
-  }
-  GetFoodData();
-  })
+function FoodCards() {
+  const [category, setCategory] = useState("")
+  const [cart, setCart] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [fav, setFav] = useState({})
+  const [foodData, setFoodData] = useState()
+  const [showToast, setShowToast] = useState({ visible: false, message: "" })
+  const email = localStorage.getItem("userEmail")
 
+  // Fetch food data
   useEffect(() => {
-    // Initialize cart from localStorage and filter out non-cart items
+    const getFoodData = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/getFoodData")
+        setFoodData(Array.isArray(response.data.foodItems) ? response.data.foodItems : [])
+      } catch (error) {
+        console.log(error)
+      }
+    }
+    getFoodData()
+  }, [])
+
+  // Initialize cart from localStorage
+  useEffect(() => {
     const storedCart = Object.keys(localStorage)
-      .map(key => {
+      .map((key) => {
         try {
-          const item = JSON.parse(localStorage.getItem(key));
-          // Check if the item has the properties of a cart item
+          const item = JSON.parse(localStorage.getItem(key))
           if (item && item.id && item.quantity) {
-            return item;
+            return item
           }
         } catch (e) {
-          return null;
+          return null
         }
-        return null;
+        return null
       })
-      .filter(item => item !== null);
-    setCart(storedCart);
-  }, []);
+      .filter((item) => item !== null)
+    setCart(storedCart)
+  }, [])
 
+  // Clear localStorage if not logged in
+  useEffect(() => {
+    if (!email) {
+      localStorage.clear()
+    }
+  }, [email])
+
+  // Simulate loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Handle category filter change
   const handleCheckboxChange = (e) => {
     try {
       if (e.target.checked) {
         setTimeout(() => {
-          setCategory(e.target.value);
-        }, 100);
+          setCategory(e.target.value)
+        }, 100)
       } else {
-        setCategory("");
+        setCategory("")
       }
     } finally {
     }
-  };
-
-  const AddtoCart = (food) => {
-    window.location.reload()
-    if(email){
-    const existingItem = cart.find(item => item.id === food.id);
-    let updatedCart;
-    if (existingItem) {
-      updatedCart = cart.map(item =>
-        item.id === food.id ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      updatedCart = [...cart, { ...food, quantity: 1 }];
-    }
-    setCart(updatedCart);
-    localStorage.setItem(food.id, JSON.stringify(updatedCart.find(item => item.id === food.id)));
-  }
-  else{
-    alert("Login First");
-    window.location.href = "/login";
-    localStorage.clear();
-  }
-  };
-
-  useEffect(()=> {
-    if(!email){
-      localStorage.clear();
-    }
-  })
-
-  const updateQuantity = (foodId, quantity) => {
-    const updatedCart = cart.map((item) => {
-      if (item.id === foodId) {
-        const updatedItem = { ...item, quantity: item.quantity + quantity };
-        if(updatedItem.quantity > 0){
-          setTimeout(() => {
-            window.location.reload()
-          }, 300);
-          localStorage.setItem(foodId, JSON.stringify(updatedItem));
-        }
-        else {
-          window.location.reload()
-          localStorage.removeItem(foodId)}
-        return updatedItem;
-      }
-      return item;
-    }).filter(item => item.quantity > 0); // Remove items with quantity 0
-    setCart(updatedCart);
-  };
-  
-  const handleFav = (foodId) =>{
-    setFav((prevFav) => ({
-      ...prevFav !== foodId.id, [foodId.id] : !prevFav[foodId.id],
-    }))
-    try {
-      if(email){
-        console.log(email, foodId);
-      axios.post("http://localhost:8000/fav", {
-        email,
-        foodId
-      }).then((res) => {
-        console.log(res.data);
-      });
-    }
-    else{
-      window.location.href = "/login";
-      alert("Login First, then add to favourites");
-      localStorage.clear();
-    }
-    } catch (e) {
-      console.log(e);
-    }
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Display toast notification
+  const displayToast = (message) => {
+    setShowToast({ visible: true, message })
+    setTimeout(() => {
+      setShowToast({ visible: false, message: "" })
+    }, 3000)
+  }
+
+  // Add item to cart
+  const addToCart = (food) => {
+    if (!email) {
+      displayToast("Please login to add items to cart")
       setTimeout(() => {
-        setIsLoading(false);
-      }, 2000);
-    };
+        window.location.href = "/login"
+      }, 1000)
+      return
+    }
 
-    fetchData();
-  }, []);
+    const existingItem = cart.find((item) => item.id === food.id)
+    let updatedCart
+
+    if (existingItem) {
+      updatedCart = cart.map((item) => (item.id === food.id ? { ...item, quantity: item.quantity + 1 } : item))
+    } else {
+      updatedCart = [...cart, { ...food, quantity: 1 }]
+    }
+
+    setCart(updatedCart)
+    localStorage.setItem(food.id, JSON.stringify(updatedCart.find((item) => item.id === food.id)))
+    displayToast(`${food.name} added to cart!`)
+  }
+
+  // Update item quantity in cart
+  const updateQuantity = (foodId, quantity) => {
+    const updatedCart = cart
+      .map((item) => {
+        if (item.id === foodId) {
+          const updatedItem = { ...item, quantity: item.quantity + quantity }
+          if (updatedItem.quantity > 0) {
+            localStorage.setItem(foodId, JSON.stringify(updatedItem))
+            displayToast(`Cart updated!`)
+          } else {
+            localStorage.removeItem(foodId)
+            displayToast(`Item removed from cart`)
+          }
+          return updatedItem
+        }
+        return item
+      })
+      .filter((item) => item.quantity > 0)
+
+    setCart(updatedCart)
+  }
+
+  // Toggle favorite status
+  const handleFav = (foodId) => {
+    if (!email) {
+      displayToast("Please login to add favorites")
+      setTimeout(() => {
+        window.location.href = "/login"
+      }, 1000)
+      return
+    }
+
+    setFav((prevFav) => ({
+      ...(prevFav !== foodId.id),
+      [foodId.id]: !prevFav[foodId.id],
+    }))
+
+    try {
+      axios
+        .post("http://localhost:8000/fav", {
+          email,
+          foodId,
+        })
+        .then((res) => {
+          displayToast(fav[foodId.id] ? "Removed from favorites" : "Added to favorites")
+        })
+    } catch (e) {
+      console.log(e)
+    }
+  }
 
   return (
-    <div>
-      {isLoading ? (
-        <div className="font-sans ml-36 mr-28">
-        <div className="flex flex-row gap-2">
-        <div className="relative flex ml-10 justify-start items-end w-fit content-start py-2">
-          <Skeleton height={20} width={20} count={1} />
-          <Skeleton height={40} width={40} count={1} style={{ margin: '0 10px' }} />
+    <div className="bg-white mt-10 min-h-screen ml-6 max-sm:ml-4 max-sm:w-full pb-20">
+      
+      {/* Toast notification */}
+      <AnimatePresence>
+        {showToast.visible && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg z-50"
+          >
+            {showToast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header with logo */}
+      <div className="container mx-auto px-4 pt-8 pb-4">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-24 h-24 mb-4 bg-amber-100 rounded-full flex items-center justify-center">
+            <i className="bx bxs-restaurant text-5xl text-amber-600">AB</i>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-center text-gray-800">Delicious Menu</h1>
+          <p className="text-gray-500 mt-2 text-center max-w-2xl">
+            Discover our wide range of mouth-watering dishes prepared with the finest ingredients
+          </p>
         </div>
-        <div className="relative flex justify-start items-end w-fit content-start py-2">
-          <Skeleton height={20} width={20} count={1} />
-          <Skeleton height={40} width={40} count={1} style={{ margin: '0 10px' }} />
-        </div>
-        </div>
-        <div className="relative flex flex-wrap">
-          {Array(170).fill().map((_, index) => (
-            <div key={index} className="p-4 w-1/3 flex flex-wrap">
-              <div className="border h-full rounded-lg p-4">
-                <Skeleton height={240} width={350} />
-                <Skeleton height={30} width={150} style={{ marginTop: '10px' }} />
-                <Skeleton height={10} width={80} style={{ marginTop: '10px' }} />
-                <div className="flex justify-between">
-                <Skeleton height={40} width={70} style={{ marginTop: '20px' }} />
-                <Skeleton height={40} width={150} style={{ marginTop: '20px' }} />
-                </div>
+
+        {/* Category filter */}
+        <div className="flex flex-wrap justify-center items-center gap-4 md:gap-8 mb-10">
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-shadow">
+            <input
+              type="checkbox"
+              id="veg-filter"
+              value="Veg"
+              checked={category === "Veg"}
+              onChange={handleCheckboxChange}
+              className="w-4 h-4 accent-green-500"
+            />
+            <label htmlFor="veg-filter" className="flex items-center cursor-pointer">
+              <div className="w-6 h-6 mr-2 bg-green-100 rounded-full flex items-center justify-center">
+                <i className="bx bxs-leaf text-green-600"></i>
               </div>
-            </div>
-          ))}
+              <span className="font-medium">Vegetarian</span>
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-shadow">
+            <input
+              type="checkbox"
+              id="non-veg-filter"
+              value="Non-veg"
+              checked={category === "Non-veg"}
+              onChange={handleCheckboxChange}
+              className="w-4 h-4 accent-red-500"
+            />
+            <label htmlFor="non-veg-filter" className="flex items-center cursor-pointer">
+              <div className="w-6 h-6 mr-2 bg-red-100 rounded-full flex items-center justify-center">
+                <i className="bx bxs-food-menu text-red-600"></i>
+              </div>
+              <span className="font-medium">Non-Vegetarian</span>
+            </label>
+          </div>
         </div>
       </div>
-      ) : (
-        <div className="font-sans max-sm:-mr-8">
-           <div className="relative flex justify-end items-end w-[500px] max-sm:w-full content-start py-2">
-            <h1 className="w-full text-right gap-2 flex justify-end items-center">
-              <input
-                type="checkbox"
-                value="Veg"
-                className="h-10 w-5"
-                id="cate"
-                onChange={handleCheckboxChange}
-                checked={category === "Veg"}
-              />
-              <img
-                className="h-10 w-10"
-                src="https://t4.ftcdn.net/jpg/05/47/36/93/240_F_547369319_CeGcFwxMj3QFen7F3ICMca9inkucYQKv.jpg"
-                alt=""
-              />
-              
-            </h1>
-            <h1 className="w-full text-left gap-2 px-5 flex justify-start items-center">
-              <input
-                type="checkbox"
-                value="Non-veg"
-                className="h-10 w-5"
-                id="cate"
-                onChange={handleCheckboxChange}
-                checked={category === "Non-veg"}
-              />
-              <img
-                className="h-9 w-9"
-                src="https://t3.ftcdn.net/jpg/11/29/94/92/240_F_1129949241_weSI8zfHhafNR9HHv2ZFhnHNbyLXsYVQ.jpg"
-                alt=""
-              />
-            </h1>
-          </div>
-          <div className="w-full flex justify-center max-xl:flex-wrap items-center bg-blue overflow-hidden flex-wrap">
-            {foodData1[0].foodItems
-              .filter((food1) => !category || food1.category === category)
-              .map((food1) => (
-                <div
-                  id={food1.id}
-                  className="w-full max-w-sm max-sm:flex mx-2 mb-7 bg-white border border-gray-200 rounded-lg shadow-lg max-sm:mb-5 hover:scale-95 transition duration-200"
-                >
-                  <a href="#" className="">
-                    <img
-                      className="p-8 max-sm:p-3 rounded-t-lg max-sm:h-48 max-sm:w-52 max-sm:object-cover w-full h-72 object-cover"
-                      src={food1.image}
-                      alt="product image"
-                    />
-                  </a>
-                  <div className="px-5 pb-5 -mt-3 max-sm:-mt-0 max-sm:py-3">
-                    <a href="#">
-                      <h5 className="text-xl font-semibold flex justify-between mx-1 tracking-tight text-gray-900  max-sm:text-lg">
-                        {food1.name}
-                        <p className="text-sm">
-                          {food1.category === "Non-veg" ? (
-                            <span className="text-red-500">Non-veg</span>
-                          ) : (
-                            <span className="text-green-500">Veg</span>
-                          )}
-                        </p>
-                      </h5>
-                    </a>
-                    <div className="flex items-center mt-2.5 mb-5">
-                      <div className="flex items-center space-x-1 rtl:space-x-reverse">
-                        <svg
-                          className="w-4 h-4 text-yellow-300"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                        >
-                          <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                        </svg>
-                        <svg
-                          className="w-4 h-4 text-yellow-300"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                        >
-                          <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                        </svg>
-                        <svg
-                          className="w-4 h-4 text-yellow-300"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                        >
-                          <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                        </svg>
-                        <svg
-                          className="w-4 h-4 text-yellow-300"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                        >
-                          <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                        </svg>
-                        <svg
-                          className="w-4 h-4 text-gray-200 dark:text-gray-600"
-                          aria-hidden="true"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="currentColor"
-                          viewBox="0 0 22 20"
-                        >
-                          <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                        </svg>
-                      </div>
-                      <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-200 dark:text-blue-800 ms-3">
-                        5.0
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mr-2 max-sm:flex-col max-sm:items-start max-sm:gap-2">
-                      <span className="text-2xl text-gray-700 flex justify-center items-start -mr-5 max-sm:text-lg">
-                        <box-icon name="rupee"></box-icon>
-                        {food1.price}
-                      </span>
-                      <AnimatePresence>
-                      {cart.find(item => item.id === food1.id) ? (
-                      <motion.div 
-                      key="quantity-controls"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 20 }}
-                          transition={{ duration: 0.3 }}
-                      className="flex items-center border w-1/3 max-sm:w-full border-gray-300 justify-center mt-4">
-                        <button
-                          className="text-gray-400 p-2 hover:scale-150 transition duration-100"
-                          onClick={() => updateQuantity(food1.id, -1)}
-                        >
-                          -
-                        </button>
-                        <motion.span 
-                        key={cart.find(item => item.id === food1.id)?.quantity}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.5 }}
-                        className="mx-2 font-bold text-sm text-green-500">
-                          {cart.find(item => item.id === food1.id)?.quantity}
-                        </motion.span>
-                        <button
-                          className="p-2 hover:scale-150 transition duration-100"
-                          onClick={() => updateQuantity(food1.id, 1)}
-                        >
-                          +
-                        </button>
-                      </motion.div>
-                    ) : (
-                      <div className="flex justify-center items-center -mt-4">
-                      <motion.button
-                      key="add-to-cart"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y:-20 }}
-                          transition={{ duration: 0.3 }}
-                        className="mt-4 bg-green-700 text-white px-4 py-2 rounded"
-                        onClick={() => AddtoCart(food1)}
-                      >
-                        Add to Cart
-                      </motion.button>
-                      <button
-                      className={` mt-3 h-10 w-10  ${fav[food1.id] ? 'text-red-500' : 'text-gray-500'} bg-gray-50 p-2 rounded-full hover:scale-105 transition duration-100 ml-2`}
-                      onClick={() => handleFav(food1)}
-                    >
-                      <box-icon name="heart" type={fav[food1.id] ? 'solid' : 'regular'}></box-icon>
-                    </button>
-                    </div>
-                    )}
-                    </AnimatePresence>
+
+      {/* Food cards grid */}
+      <div className="container mx-auto px-4">
+        {isLoading ? (
+          // Loading skeletons
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {Array(8)
+              .fill(0)
+              .map((_, index) => (
+                <div key={index} className="bg-white rounded-xl overflow-hidden shadow-lg">
+                  <Skeleton height={200} className="w-full" />
+                  <div className="p-5 space-y-3">
+                    <Skeleton height={24} width="75%" />
+                    <Skeleton height={16} width="50%" />
+                    <div className="flex justify-between items-center pt-2">
+                      <Skeleton height={24} width={80} />
+                      <Skeleton height={40} width={120} className="rounded-full" />
                     </div>
                   </div>
                 </div>
               ))}
           </div>
-        </div>
+        ) : (
+          // Actual food cards
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {foodData &&
+              foodData[0]?.foodItems
+                .filter((food) => !category || food.category === category)
+                .map((food) => (
+                  <motion.div
+                    key={food.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    transition={{ duration: 0.3 }}
+                    className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  >
+                    {/* Food image */}
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={food.image || "/placeholder.svg"}
+                        alt={food.name}
+                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                      />
+
+                      {/* Category badge */}
+                      <div
+                        className={`absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-semibold ${
+                          food.category === "Non-veg" ? "bg-red-500 text-white" : "bg-green-500 text-white"
+                        }`}
+                      >
+                        {food.category}
+                      </div>
+
+                      {/* Favorite button */}
+                      <button
+                        onClick={() => handleFav(food)}
+                        className="absolute top-3 left-3 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:bg-white transition-colors"
+                        aria-label={fav[food.id] ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <i
+                          className={`bx ${fav[food.id] ? "bxs-heart text-red-500" : "bx-heart text-gray-500"} text-xl`}
+                        ></i>
+                      </button>
+                    </div>
+
+                    {/* Food details */}
+                    <div className="p-5">
+                      <h3 className="text-lg font-bold mb-1 text-gray-800">{food.name}</h3>
+
+                      {/* Ratings */}
+                      <div className="flex items-center mb-3">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <i
+                            key={star}
+                            className={`bx bxs-star ${star <= 4 ? "text-yellow-400" : "text-gray-300"}`}
+                          ></i>
+                        ))}
+                        <span className="ml-2 text-xs font-medium text-gray-500">4.0 (120)</span>
+                      </div>
+
+                      {/* Price and actions */}
+                      <div className="flex items-center justify-between mt-4">
+                        <div className="flex items-center">
+                          <i className="bx bx-rupee text-xl"></i>
+                          <span className="text-gray-800 font-bold text-xl">{food.price}</span>
+                        </div>
+
+                        <AnimatePresence mode="wait">
+                          {cart.find((item) => item.id === food.id) ? (
+                            <motion.div
+                              key="quantity-controls"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              className="flex items-center bg-gray-100 rounded-full overflow-hidden"
+                            >
+                              <button
+                                onClick={() => updateQuantity(food.id, -1)}
+                                className="p-2 hover:bg-gray-200 transition-colors"
+                                aria-label="Decrease quantity"
+                              >
+                                <i className="bx bx-minus"></i>
+                              </button>
+
+                              <motion.span
+                                key={cart.find((item) => item.id === food.id)?.quantity}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="w-8 text-center font-bold"
+                              >
+                                {cart.find((item) => item.id === food.id)?.quantity}
+                              </motion.span>
+
+                              <button
+                                onClick={() => updateQuantity(food.id, 1)}
+                                className="p-2 hover:bg-gray-200 transition-colors"
+                                aria-label="Increase quantity"
+                              >
+                                <i className="bx bx-plus"></i>
+                              </button>
+                            </motion.div>
+                          ) : (
+                            <motion.button
+                              key="add-button"
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.8 }}
+                              onClick={() => addToCart(food)}
+                              className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-full hover:bg-green-600 transition-colors"
+                            >
+                              <i className="bx bx-cart-add"></i>
+                              <span>Add</span>
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading &&
+          foodData &&
+          foodData[0]?.foodItems.filter((food) => !category || food.category === category).length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 mx-auto mb-6 opacity-30 flex items-center justify-center">
+                <i className="bx bx-dish text-6xl text-gray-400"></i>
+              </div>
+              <h3 className="text-xl font-medium text-gray-500">No items found</h3>
+              <p className="text-gray-400 mt-2">Try changing your filter or check back later</p>
+            </div>
+          )}
+      </div>
+
+      {/* Floating cart button */}
+      {cart.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="fixed bottom-6 right-6">
+          <a
+            href="/cart"
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg hover:bg-amber-600 transition-colors"
+          >
+            <i className="bx bxs-cart text-xl"></i>
+            <span className="font-medium">View Cart ({cart.reduce((acc, item) => acc + item.quantity, 0)})</span>
+          </a>
+        </motion.div>
       )}
     </div>
-  );
+  )
 }
 
-export default Cards;
-//commit
+export default FoodCards
+

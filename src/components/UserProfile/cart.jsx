@@ -2,13 +2,44 @@ import React, { useEffect, useState } from "react";
 import foodData from "../../food/food1.json";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import Loading from "../../Loading";
 import axios from "axios";
+import { 
+  FiShoppingCart, 
+  FiMapPin, 
+  FiPlus, 
+  FiMinus, 
+  FiCheck, 
+  FiX, 
+  FiHome, 
+  FiDollarSign, 
+  FiCreditCard, 
+  FiTruck, 
+  FiGift, 
+  FiHeart
+} from "react-icons/fi";
+import { 
+  RiMapPinLine, 
+  RiMapPinFill, 
+  RiRestaurantLine, 
+  RiMoneyDollarCircleLine, 
+  RiArrowLeftSLine, 
+  RiArrowRightSLine 
+} from "react-icons/ri";
+import { BiRupee } from "react-icons/bi";
+
+// Fix Leaflet icon issues
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 function Cart() {
   const [data1, setData1] = useState([]);
@@ -16,8 +47,7 @@ function Cart() {
   const [isLoading, setIsLoading] = useState(true);
   const [address, setAddress] = useState("");
   const [addnew, setAddnew] = useState(false);
-  const [topay, setTopay] = useState("");
-  const [foodData1, setFoodData1] = useState();
+  const [foodData1, setFoodData1] = useState([]);
   const [floor, setFloor] = useState("");
   const [landmark, setLandmark] = useState("");
   const [place, setPlace] = useState("");
@@ -26,25 +56,19 @@ function Cart() {
   const [selectedAddress, setSelectedAddress] = useState("");
   const [deliveryTip, setDeliveryTip] = useState(0);
   const [isLogin, setIsLogin] = useState(false);
+  const [tipOptions] = useState([10, 20, 50, 100]);
+  const [selectedTip, setSelectedTip] = useState(null);
+  const [isAddressLoading, setIsAddressLoading] = useState(false);
+
+  // Calculate totals
   const itemsTotal = data1.reduce(
     (total, item) => total + item.price * item.quantity,
     0
   );
-  const deliveryFee = 50; // Example delivery fee
-  const extraDiscount = 20; // Example extra discount
-  const gstCharges = (itemsTotal + deliveryFee - extraDiscount) * 0.12; // 18% GST
-  const totalAmount =
-    itemsTotal + deliveryFee - extraDiscount + gstCharges + deliveryTip;
-
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-    iconUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-  });
+  const deliveryFee = 50;
+  const extraDiscount = 20;
+  const gstCharges = (itemsTotal + deliveryFee - extraDiscount) * 0.12;
+  const totalAmount = itemsTotal + deliveryFee - extraDiscount + gstCharges + deliveryTip;
 
   useEffect(() => {
     const GetFoodData = async () => {
@@ -58,7 +82,8 @@ function Cart() {
       }
     };
     GetFoodData();
-  });
+  }, []);
+
   useEffect(() => {
     const cartData = () => {
       const data = foodData.foodItems
@@ -66,59 +91,88 @@ function Cart() {
           const item = localStorage.getItem(food.id);
           return item ? JSON.parse(item) : null;
         })
-        .filter((item) => item !== null); // Filter out null values
+        .filter((item) => item !== null);
       setData1(data);
       setTimeout(() => {
         setIsLoading(false);
-      }, [2000]);
+      }, 1000);
       setCartCount(data.reduce((total, item) => total + item.quantity, 0));
       localStorage.removeItem("orderAdded");
       localStorage.removeItem("userOrderAdded");
       localStorage.removeItem("orderId");
     };
     cartData();
+
+    // Get user location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
         setPosition([latitude, longitude]);
-        // Reverse geocoding to get address (using a free service like Nominatim)
+        // Reverse geocoding
         fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
         )
           .then((response) => response.json())
           .then((data) => {
-            setAddress(data.display_name || []);
+            setAddress(data.display_name || "");
           });
       });
     }
+
+    // Check login status
     const email = localStorage.getItem("userEmail");
-    if (email) setIsLogin(true);
-    else setIsLogin(false);
+    setIsLogin(!!email);
+  }, []);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      const email = localStorage.getItem("userEmail");
+      if (!email) return;
+      
+      try {
+        const response = await axios.get("http://localhost:8000/cart/address", {
+          params: { email },
+        });
+        setSaveadd(response.data.address || []);
+      } catch (err) {
+        console.error(
+          "Error fetching addresses:",
+          err.response ? err.response.data : err.message
+        );
+        setSaveadd([]);
+      }
+    };
+
+    fetchAddresses();
   }, []);
 
   const updateQuantity = (foodId, quantity) => {
     const updatedData = data1
       .map((item) => {
         if (item.id === foodId) {
-          window.location.reload();
           const updatedItem = { ...item, quantity: item.quantity + quantity };
-          if (updatedItem.quantity > 0)
+          if (updatedItem.quantity > 0) {
             localStorage.setItem(foodId, JSON.stringify(updatedItem));
-          else localStorage.removeItem(foodId);
-          return updatedItem;
+            return updatedItem;
+          } else {
+            localStorage.removeItem(foodId);
+            return null;
+          }
         }
         return item;
       })
-      .filter((item) => item.quantity > 0); // Remove items with quantity 0
+      .filter((item) => item !== null);
+    
     setData1(updatedData);
     setCartCount(updatedData.reduce((total, item) => total + item.quantity, 0));
   };
+
   const handlesendaddress = async () => {
     const email = localStorage.getItem("userEmail");
     if (!email) return;
 
     try {
-      const response = await axios.post("http://localhost:8000/cart/save", {
+      await axios.post("http://localhost:8000/cart/save", {
         cartItems: data1.map((item) => ({
           foodId: item.id,
           name: item.name,
@@ -128,42 +182,24 @@ function Cart() {
         })),
         email: email,
       });
-      console.log("Data saved successfully:", response.data);
+      
+      // Show success toast or notification here
     } catch (err) {
       console.error(
         "Error saving data:",
         err.response ? err.response.data : err.message
       );
+      // Show error toast or notification here
     }
   };
-
-  useEffect(() => {
-    const fetchAddresses = async () => {
-      const email = localStorage.getItem("userEmail");
-      try {
-        const response = await axios.get("http://localhost:8000/cart/address", {
-          params: { email },
-        });
-        console.log("Backend Response:", response.data); // Debugging line
-        setSaveadd(response.data.address || []);
-      } catch (err) {
-        console.error(
-          "Error fetching addresses:",
-          err.response ? err.response.data : err.message || []
-        );
-        setSaveadd([]);
-      }
-    };
-
-    fetchAddresses();
-  }, []);
 
   function LocationMarker() {
     const map = useMapEvents({
       click(e) {
         setPosition([e.latlng.lat, e.latlng.lng]);
         map.flyTo(e.latlng, map.getZoom());
-        // Reverse geocoding to get address (using a free service like Nominatim)
+        
+        // Reverse geocoding
         fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${e.latlng.lat}&lon=${e.latlng.lng}`
         )
@@ -177,8 +213,8 @@ function Cart() {
     const handleMarkerDragEnd = (e) => {
       const newPosition = e.target.getLatLng();
       setPosition([newPosition.lat, newPosition.lng]);
-      console.log(position);
-      // Reverse geocoding to get address (using a free service like Nominatim)
+      
+      // Reverse geocoding
       fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${newPosition.lat}&lon=${newPosition.lng}`
       )
@@ -193,14 +229,14 @@ function Cart() {
         position={position}
         draggable={true}
         eventHandlers={{ dragend: handleMarkerDragEnd }}
-      ></Marker>
+      />
     );
   }
 
   const handlePayment = () => {
     handlesendaddress();
-    // Redirect to a payment app or payment gateway
-    window.location.href = "/payment-gatway";
+    // Redirect to payment gateway
+    window.location.href = "/payment-gateway";
   };
 
   const handleCloseModal = (e) => {
@@ -210,388 +246,577 @@ function Cart() {
   };
 
   const handleNewAddress = async () => {
-    setIsLoading(true);
+    setIsAddressLoading(true);
     const newAddress = `${place}, ${floor}, ${landmark}, ${address}`;
     const email = localStorage.getItem("userEmail");
+    
     try {
-      const response = await axios.post(
+      await axios.post(
         "http://localhost:8000/cart/save-address",
         {
           email,
           address: newAddress,
         }
       );
-      console.log("Current saveadd:", saveadd); // Debugging line
+      
       setSaveadd((prevSaveadd) => {
-        const updatedSaveadd = [...(prevSaveadd || []), newAddress];
-        console.log("Updated saveadd:", updatedSaveadd); // Debugging line
-        return updatedSaveadd;
+        return [...(prevSaveadd || []), newAddress];
       });
+      
       setAddnew(false);
+      // Show success notification
     } catch (err) {
       console.error(
         "Error saving address:",
         err.response ? err.response.data : err.message
-      ) || [];
+      );
+      // Show error notification
     } finally {
-      setIsLoading(false);
+      setIsAddressLoading(false);
     }
   };
 
   const handleSelectAddress = (address) => {
     setSelectedAddress(address);
-    console.log(selectedAddress);
   };
 
-  const handleAddTip = () => {
+  const handleAddTip = (amount) => {
+    setDeliveryTip(amount);
+    setSelectedTip(amount);
+  };
+
+  const handleCustomTip = () => {
     const tip = prompt("Enter tip amount: ");
-    if (tip) {
-      setDeliveryTip(parseFloat(tip));
+    if (tip && !isNaN(tip)) {
+      const tipAmount = parseFloat(tip);
+      setDeliveryTip(tipAmount);
+      setSelectedTip(tipAmount);
     }
   };
 
-  if (isLoading === true) {
+  if (isLoading) {
     return (
-      <div className="fixed top-0 h-20 w-20 z-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
         <Loading />
       </div>
     );
   }
+
   return (
-    <div className="absolute py-10 h-full flex flex-col justify-between right-0 top-10  xl:px-20 bg-gray-100 w-full font-noto-serif-bengali text-gray-800">
-      {isLoading ? (
-        <div className="max-w-screen">
-          <div className="fixed top-20 left-10">
-            <Skeleton height={300} width={500} count={1} />
-            <Skeleton height={40} width={300} count={1} />
-            <Skeleton
-              height={800}
-              width={300}
-              count={3}
-              style={{ margin: "20px 0" }}
-            />
-          </div>
-          <div className="fixed right-0 top-10 shadow-xl">
-            <Skeleton
-              height={800}
-              width={500}
-              count={1}
-              style={{ backgroundColor: "white" }}
-            >
-              <Skeleton
-                height={300}
-                width={200}
-                count={1}
-                style={{ backgroundColor: "black" }}
-              />
-            </Skeleton>
-          </div>
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+            <FiShoppingCart className="mr-3" /> 
+            Your Cart
+            {cartCount > 0 && (
+              <span className="ml-3 text-sm bg-orange-500 text-white px-2 py-1 rounded-full">
+                {cartCount} items
+              </span>
+            )}
+          </h1>
         </div>
-      ) : (
-        <>
-          {cartCount === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="text-3xl h-[700px] lg:-ml-20 lg:-mr-20 flex flex-col justify-center items-center bg-white gap-2"
+
+        {cartCount === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white rounded-lg shadow-sm p-8 flex flex-col items-center justify-center text-center"
+          >
+            <img
+              src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto/2xempty_cart_yfxml0"
+              className="h-64 w-64 mb-6"
+              alt="Empty Cart"
+            />
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">Your cart is empty</h2>
+            <p className="text-gray-500 mb-6">You can go to home page to view more food options</p>
+            <Link 
+              to="/home" 
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center"
             >
-              <img
-                src="https://media-assets.swiggy.com/swiggy/image/upload/fl_lossy,f_auto,q_auto/2xempty_cart_yfxml0"
-                className="h-72 w-72"
-                alt="Cart"
-              />
-              <span>Your cart is empty </span>
-              <p className="text-sm">You can go to home to view food</p>{" "}
-              <Link to="/home" className="bg-green-700 px-3 py-1 text-white">
-                View More
-              </Link>
-            </motion.div>
-          ) : (
-            <div className="max-w-screen flex justify-center items-start flex-col lg:flex-row lg:-mr-20">
-              <div className="flex flex-col w-full lg:w-[850px] p-4 mt-2">
-                <div className="bg-white p-4 mb-4 px-10 py-10 max-sm:px-0">
-                  {selectedAddress ? (
-                    <div className="">
-                      <h2 className="text-xl font-bold mb-2 flex justify-start items-center gap-2">
-                        Delivery Address
-                        <span className="text-center flex justify-center items-center bg-green-600 rounded-full">
-                          <svg
-                            className="w-6 h-6 text-gray-800 dark:text-white"
-                            aria-hidden="true"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="24"
-                            height="24"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke="currentColor"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 11.917 9.724 16.5 19 7.5"
+              <RiArrowLeftSLine className="mr-2" /> Browse Menu
+            </Link>
+          </motion.div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left Column - Cart Items & Address */}
+            <div className="flex-1">
+              {/* Cart Items Section */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="bg-white rounded-lg shadow-sm p-6 mb-6"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                    <RiRestaurantLine className="mr-2 text-orange-500" size={22} />
+                    Order Summary
+                  </h2>
+                  <span className="text-sm text-gray-500">{cartCount} items</span>
+                </div>
+
+                <div className="divide-y divide-gray-100">
+                  {data1.map((foodItem) => (
+                    <motion.div
+                      key={foodItem.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="py-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                          {foodItem.image ? (
+                            <img 
+                              src={foodItem.image || "/placeholder.svg"} 
+                              alt={foodItem.name} 
+                              className="w-full h-full object-cover"
                             />
-                          </svg>
-                        </span>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                              <RiRestaurantLine size={24} />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-800">{foodItem.name}</h3>
+                          <p className="text-gray-500 text-sm flex items-center">
+                            <BiRupee className="inline" /> {foodItem.price} each
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center border border-gray-200 rounded-md">
+                          <button
+                            className="px-3 py-1 text-gray-500 hover:text-red-500 transition-colors"
+                            onClick={() => updateQuantity(foodItem.id, -1)}
+                            aria-label="Decrease quantity"
+                          >
+                            <FiMinus size={16} />
+                          </button>
+                          <span className="px-3 py-1 font-medium text-gray-800">
+                            {foodItem.quantity}
+                          </span>
+                          <button
+                            className="px-3 py-1 text-gray-500 hover:text-green-500 transition-colors"
+                            onClick={() => updateQuantity(foodItem.id, 1)}
+                            aria-label="Increase quantity"
+                          >
+                            <FiPlus size={16} />
+                          </button>
+                        </div>
+                        
+                        <div className="text-right">
+                          <p className="font-medium text-gray-800 flex items-center">
+                            <BiRupee className="inline" /> {foodItem.price * foodItem.quantity}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Address Section */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="bg-white rounded-lg shadow-sm p-6 mb-6"
+              >
+                {selectedAddress ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                        <FiMapPin className="mr-2 text-orange-500" size={22} />
+                        Delivery Address
                       </h2>
                       <button
-                        className="bg-transparent text-orange-600 text-lg"
-                        onClick={() => setSelectedAddress()}
+                        className="text-orange-500 hover:text-orange-600 font-medium text-sm flex items-center"
+                        onClick={() => setSelectedAddress("")}
                       >
-                        Change
+                        Change <RiArrowRightSLine className="ml-1" />
                       </button>
-                      <div>{selectedAddress}</div>
                     </div>
-                  ) : (
-                    <div>
-                      <h2 className="text-xl font-bold mb-2">
-                        Choose a delivery address
-                      </h2>
-                      <div className="mt-4">
-                        <ul className="w-full grid grid-cols-2 max-sm:grid-cols-1">
-                          {saveadd.map((addr, index) => (
-                            <li
-                              key={index}
-                              className="mb-2 w-[350px] text-wrap border hover:shadow-xl p-10 flex flex-col justify-center items-center gap-3"
-                            >
-                              <span className="">
-                                <box-icon type="solid" name="map"></box-icon>
-                                {addr.split(",")[0]}
-                              </span>
-                              {addr.slice()}
+                    
+                    <div className="bg-green-50 border border-green-100 rounded-lg p-4 flex items-start">
+                      <div className="bg-green-100 rounded-full p-2 mr-3 text-green-600 flex-shrink-0">
+                        <FiCheck size={18} />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-800 mb-1">
+                          {selectedAddress.split(',')[0]}
+                        </h3>
+                        <p className="text-gray-600 text-sm">{selectedAddress}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-800 flex items-center mb-4">
+                      <FiMapPin className="mr-2 text-orange-500" size={22} />
+                      Choose a delivery address
+                    </h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {saveadd.map((addr, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3, delay: index * 0.05 }}
+                          className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            selectedAddress === addr ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+                          }`}
+                          onClick={() => handleSelectAddress(addr)}
+                        >
+                          <div className="flex items-start">
+                            <div className="mr-3 text-gray-500">
+                              <RiMapPinFill size={20} className="text-orange-500" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-medium text-gray-800 mb-1">
+                                {addr.split(',')[0]}
+                              </h3>
+                              <p className="text-gray-600 text-sm line-clamp-2 mb-3">{addr}</p>
                               <button
-                                className="ml-4 bg-green-700 text-white font-roboto-condensed px-3 py-1 -mb-5"
-                                onClick={() => handleSelectAddress(addr)}
+                                className="text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded transition-colors duration-200"
                               >
                                 Deliver here
                               </button>
-                            </li>
-                          ))}
-                          <button
-                            onClick={() => setAddnew(!addnew)}
-                            className="mb-2 w-[350px] h-[200px] text-wrap border hover:shadow-xl p-10 flex flex-col justify-center items-center gap-3 text-xl"
-                          >
-                            Add New Address
-                          </button>
-                        </ul>
-                      </div>
-                      {addnew && (
-                        <div
-                          id="modal-overlay"
-                          onClick={handleCloseModal}
-                          className="absolute bg-black bg-opacity-35 w-full -ml-7 right-0 -top-10 h-full z-50"
-                        >
-                          <motion.div
-                            initial={{ opacity: 1, x: -420 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 1, x: -120 }}
-                            transition={{ duration: 0.3, delay: 0.1 }}
-                            className=" flex justify-end h-full w-[600px] bg-white"
-                          >
-                            <div className="flex flex-wrap justify-start px-10 py-3 h-full max-w-full w-[500px]">
-                              <div className="flex justify-start items-center -ml-3 py-5 h-fit w-full">
-                                <img
-                                  className="h-4 w-4 m-3 hover:opacity-55 max-sm:absolute font-extralight   max-sm:right-0 max-sm:top-0"
-                                  src="https://cdn-icons-png.flaticon.com/128/1828/1828778.png"
-                                  alt=""
-                                  onClick={() => setAddnew(false)}
-                                />
-                                <span className="text-xl font-bold">
-                                  Save delivery address
-                                </span>
-                              </div>
-                              <div className="h-full w-full">
-                                <MapContainer
-                                  center={position}
-                                  zoom={13}
-                                  style={{ height: "250px", width: "100%" }}
-                                >
-                                  <TileLayer
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                  />
-                                  <LocationMarker />
-                                </MapContainer>
-                                <input
-                                  className="border w-full py-5 px-5 text-gray-700 outline-none text-lg"
-                                  id="address-input"
-                                  type="text"
-                                  placeholder="Selected address will appear here"
-                                  value={address}
-                                  readOnly
-                                />
-                                <div className="flex flex-col justify-center items-center border mt-5">
-                                  <input
-                                    className="h-10 w-full outline-none border px-5 py-8 text-lg"
-                                    type="text"
-                                    placeholder="Floor/plot no."
-                                    value={floor}
-                                    onChange={(e) => setFloor(e.target.value)}
-                                    required
-                                  />
-                                  <input
-                                    className="h-10 w-full outline-none border px-5 py-8 text-lg"
-                                    type="text"
-                                    placeholder="Landmark"
-                                    value={landmark}
-                                    onChange={(e) =>
-                                      setLandmark(e.target.value)
-                                    }
-                                    required
-                                  />
-                                  <input
-                                    className="h-10 w-full outline-none px-5 py-8 text-lg"
-                                    type="text"
-                                    placeholder="Home/Office/others"
-                                    value={place}
-                                    onChange={(e) => setPlace(e.target.value)}
-                                  />
-                                </div>
-                                <button
-                                  className="bg-green-700 text-white px-4 py-2 rounded w-full mt-4"
-                                  onClick={handleNewAddress}
-                                >
-                                  Save Address
-                                </button>
-                              </div>
                             </div>
-                          </motion.div>
+                          </div>
+                        </motion.div>
+                      ))}
+                      
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: saveadd.length * 0.05 }}
+                        className="border border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+                        onClick={() => setAddnew(true)}
+                      >
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3 text-gray-500">
+                          <FiPlus size={24} />
                         </div>
+                        <h3 className="font-medium text-gray-800 mb-1">Add New Address</h3>
+                        <p className="text-gray-500 text-sm">Add a new delivery location</p>
+                      </motion.div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Payment Button */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className={`bg-white rounded-lg shadow-sm p-6 ${!selectedAddress ? 'opacity-70' : ''}`}
+              >
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center mb-4">
+                  <FiCreditCard className="mr-2 text-orange-500" size={22} />
+                  Payment Method
+                </h2>
+                
+                <button
+                  className={`w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center ${
+                    !selectedAddress ? 'cursor-not-allowed opacity-70' : ''
+                  }`}
+                  onClick={handlePayment}
+                  disabled={!selectedAddress}
+                >
+                  <FiCreditCard className="mr-2" />
+                  Proceed to Payment
+                </button>
+              </motion.div>
+            </div>
+
+            {/* Right Column - Order Summary */}
+            <div className="lg:w-96">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="bg-white rounded-lg shadow-sm p-6 sticky top-6"
+              >
+                <h2 className="text-xl font-semibold text-gray-800 mb-6 pb-4 border-b border-gray-100 flex items-center">
+                  <RiMoneyDollarCircleLine className="mr-2 text-orange-500" size={22} />
+                  Bill Details
+                </h2>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Item Total</span>
+                    <span className="font-medium text-gray-800 flex items-center">
+                      <BiRupee className="inline" /> {itemsTotal.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Delivery Fee</span>
+                    <span className="font-medium text-gray-800 flex items-center">
+                      <BiRupee className="inline" /> {deliveryFee.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Discount</span>
+                    <span className="font-medium text-green-600 flex items-center">
+                      - <BiRupee className="inline" /> {extraDiscount.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">GST and Restaurant Charges</span>
+                    <span className="font-medium text-gray-800 flex items-center">
+                      <BiRupee className="inline" /> {gstCharges.toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  <div className="pt-3 border-t border-gray-100">
+                    <div className="flex justify-between mb-3">
+                      <span className="text-gray-600 flex items-center">
+                        <FiHeart className="mr-1 text-red-500" /> Delivery Partner Tip
+                      </span>
+                      {deliveryTip > 0 ? (
+                        <span className="font-medium text-gray-800 flex items-center">
+                          <BiRupee className="inline" /> {deliveryTip.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-orange-500 font-medium">Add Tip</span>
                       )}
+                    </div>
+                    
+                    <div className="flex space-x-2 mb-4">
+                      {tipOptions.map((tip) => (
+                        <button
+                          key={tip}
+                          className={`flex-1 py-2 px-1 text-sm rounded border transition-colors ${
+                            selectedTip === tip
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'border-gray-200 text-gray-700 hover:border-orange-300'
+                          }`}
+                          onClick={() => handleAddTip(tip)}
+                        >
+                          ₹{tip}
+                        </button>
+                      ))}
+                      <button
+                        className={`flex-1 py-2 px-1 text-sm rounded border transition-colors ${
+                          selectedTip && !tipOptions.includes(selectedTip)
+                            ? 'bg-orange-500 text-white border-orange-500'
+                            : 'border-gray-200 text-gray-700 hover:border-orange-300'
+                        }`}
+                        onClick={handleCustomTip}
+                      >
+                        Custom
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-gray-200 mt-4">
+                    <div className="flex justify-between">
+                      <span className="font-semibold text-gray-900">To Pay</span>
+                      <span className="font-bold text-lg text-gray-900 flex items-center">
+                        <BiRupee className="inline" /> {totalAmount.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {extraDiscount > 0 && (
+                    <div className="mt-4 bg-green-50 p-3 rounded-lg text-sm text-green-800 flex items-start">
+                      <FiGift className="mr-2 flex-shrink-0 mt-0.5" />
+                      <span>You're saving ₹{extraDiscount.toFixed(2)} on this order!</span>
                     </div>
                   )}
                 </div>
-                {(selectedAddress && (
-                  <div className="bg-white p-10 px-10">
-                    <h2 className="text-xl font-bold mb-2">
-                      Choose a payment method
-                    </h2>
-                    <button
-                      className="mt-4 w-full bg-green-700 text-white py-2"
-                      onClick={handlePayment}
-                    >
-                      Proceed to Payment
-                    </button>
-                  </div>
-                )) || (
-                  <div className="bg-white p-10 px-10 opacity-50">
-                    <h2 className="text-xl font-bold mb-2">
-                      Choose a payment method
-                    </h2>
-                    <button
-                      className="mt-4 w-full bg-green-700 text-white py-2 cursor-not-allowed"
-                      readOnly
-                    >
-                      Proceed to Payment
-                    </button>
-                  </div>
-                )}
+              </motion.div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Add New Address Modal */}
+      <AnimatePresence>
+        {addnew && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            id="modal-overlay"
+            onClick={handleCloseModal}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 md:p-0"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center p-6 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                  <RiMapPinLine className="mr-2 text-orange-500" size={22} />
+                  Add New Delivery Address
+                </h2>
+                <button
+                  onClick={() => setAddnew(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <FiX size={24} />
+                </button>
               </div>
-              <div className=" mr-20 py-2 w-full h-full lg:w-1/4 font-sans">
-                <div className="bg-white px-8 py-2 mt-4 text-sm">
-                  <h1 className="text-2xl items-center text-center font-bold">
-                    Restaurant
-                  </h1>
-                  <div className="flex flex-col items-center justify-center py-10">
-                    {data1.map((foodItem) => (
-                      <motion.div
-                        key={foodItem.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.1 }}
-                        className="cart-bill flex flex-col gap-5 w-full"
-                      >
-                        <div className="flex justify-between items-center w-full gap-10 mb-2">
-                          <p className="w-[400px]">{foodItem.name}</p>
-                          <div className="flex px-1 items-center justify-center w-1/4 border-2 border-gray-300">
-                            <button
-                              className="px-1 text-gray-400 hover:scale-150 transition duration-100"
-                              onClick={() => updateQuantity(foodItem.id, -1)}
-                            >
-                              -
-                            </button>
-                            <span className="px-1 font-bold text-[12px] text-green-500">
-                              {foodItem.quantity}
-                            </span>
-                            <button
-                              className="px-1 hover:scale-150 transition duration-100 text-green-600"
-                              onClick={() => updateQuantity(foodItem.id, 1)}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <p className="w-9 text-righ flex justify-center items-center ">
-                            <box-icon name="rupee"></box-icon>
-                            {foodItem.price * foodItem.quantity}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
+              
+              <div className="p-6">
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Location on Map
+                  </label>
+                  <div className="h-64 rounded-lg overflow-hidden border border-gray-200">
+                    <MapContainer
+                      center={position}
+                      zoom={13}
+                      style={{ height: "100%", width: "100%" }}
+                    >
+                      <TileLayer
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      />
+                      <LocationMarker />
+                    </MapContainer>
                   </div>
-                  <h2 className="text-sm font-bold mb-2">Bill Details</h2>
-                  <div className="flex justify-between mb-2">
-                    <span>Items Total</span>
-                    <span className="flex justify-center items-center h-5 w-10">
-                      <box-icon name="rupee"></box-icon>
-                      {itemsTotal}
-                    </span>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Click on the map to set your location or drag the marker
+                  </p>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address
+                  </label>
+                  <textarea
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                    rows="2"
+                    placeholder="Selected address will appear here"
+                    value={address}
+                    readOnly
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Floor / Apartment No.
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                      placeholder="e.g. Flat 101, 2nd Floor"
+                      value={floor}
+                      onChange={(e) => setFloor(e.target.value)}
+                    />
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span>Delivery Fee</span>
-                    <span className="flex justify-center items-center h-5 w-8">
-                      <box-icon name="rupee"></box-icon>
-                      {deliveryFee}
-                    </span>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Landmark
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-700"
+                      placeholder="e.g. Near City Park"
+                      value={landmark}
+                      onChange={(e) => setLandmark(e.target.value)}
+                    />
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span>Extra Discount</span>
-                    <span className="flex justify-center items-center h-5 w-9">
-                      -<box-icon name="rupee"></box-icon>
-                      {extraDiscount}
-                    </span>
-                  </div>
-                  <hr className="py-2" />
-                  <div className="flex justify-between mb-2">
-                    <span>GST Charges</span>
-                    <span className="flex justify-center items-center h-5 w-[50px]">
-                      <box-icon name="rupee"></box-icon>
-                      {gstCharges.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between mb-2">
-                    <span>Delivery Tip</span>
-                    {deliveryTip ? (
-                      <span className="flex justify-center items-center h-5 w-7">
-                        <box-icon name="rupee"></box-icon>
-                        {deliveryTip}
-                      </span>
-                    ) : (
-                      <button
-                        className="text-orange-600 mb-2"
-                        onClick={() => handleAddTip()}
-                      >
-                        Add Tip
-                      </button>
-                    )}
-                  </div>
-                  <hr className="my-2 border-black" />
-                  <div className="flex justify-between font-bold py-2">
-                    <span>TO PAY</span>
-                    <span className="flex justify-center items-center h-5 w-16 gap-0">
-                      <box-icon name="rupee"></box-icon>
-                      {totalAmount.toFixed(2)}
-                    </span>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Save Address As
+                  </label>
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      className={`px-4 py-2 rounded-lg border flex items-center ${
+                        place === 'Home' 
+                          ? 'bg-orange-50 border-orange-500 text-orange-600' 
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setPlace('Home')}
+                    >
+                      <FiHome className="mr-2" /> Home
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-4 py-2 rounded-lg border flex items-center ${
+                        place === 'Work' 
+                          ? 'bg-orange-50 border-orange-500 text-orange-600' 
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setPlace('Work')}
+                    >
+                      <FiMapPin className="mr-2" /> Work
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-4 py-2 rounded-lg border flex items-center ${
+                        place && place !== 'Home' && place !== 'Work' 
+                          ? 'bg-orange-50 border-orange-500 text-orange-600' 
+                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                      onClick={() => {
+                        const custom = prompt("Enter custom label (e.g. Friend's House):");
+                        if (custom) setPlace(custom);
+                      }}
+                    >
+                      <FiPlus className="mr-2" /> Other
+                    </button>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
+              
+              <div className="p-6 border-t border-gray-100 flex justify-end">
+                <button
+                  type="button"
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 mr-3 hover:bg-gray-50 transition-colors"
+                  onClick={() => setAddnew(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center"
+                  onClick={handleNewAddress}
+                  disabled={isAddressLoading || !address || !floor || !place}
+                >
+                  {isAddressLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <FiCheck className="mr-2" /> Save Address
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
 export default Cart;
-//commit
