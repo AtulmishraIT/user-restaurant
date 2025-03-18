@@ -1,191 +1,232 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import "boxicons";
-import fadeLoader from "react-spinners/FadeLoader";
 import axios from "axios";
+import "boxicons/css/boxicons.min.css";
 
 function Login() {
-  const history = useNavigate();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [pe, setPe] = useState("");
-  const [ee, setEe] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [message, setMessage] = useState("");
-  //Passing data to and verifying data from the database
-  async function submit(e) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Handle form submission
+  async function handleSubmit(e) {
     e.preventDefault();
-    console.log(password, email);
+    
+    // Reset error messages
+    setEmailError("");
+    setPasswordError("");
+    
+    // Basic validation
+    if (!email.trim()) {
+      setEmailError("Email is required");
+      return;
+    }
+    
+    if (!password.trim()) {
+      setPasswordError("Password is required");
+      return;
+    }
+    
+    setLoading(true);
+    
     try {
-      await axios
-        .post("http://localhost:8000/login", {
-          email,
-          password,
-        })
-        .then((res) => {
-          if (res.data == "exist") {
-            localStorage.setItem("userEmail", email);
-            setTimeout(() => {
-              history("/home");
-              window.location.reload();
-            }, 2000);
-            setMessage(" ");
-          } else if (res.data == "notexist") {
-            setEe("User not found. Please sign up");
-          } else if (res.data == "Password not match") {
-            setPe("Inavlid password*");
-          } else {
-            setEe("Login failed. Please try again.");
-          }
-        });
-    } catch (e) {
-      if (res.data == "Password not match") {
-        setPe("Password incorrect*");
+      const response = await axios.post("http://localhost:8000/login", {
+        email,
+        password,
+      });
+      
+      if (response.data === "exist") {
+        localStorage.setItem("userEmail", email);
+        setMessage("Login successful! Redirecting...");
+        
+        setTimeout(() => {
+          navigate("/home");
+          window.location.reload();
+        }, 2000);
+      } else if (response.data === "notexist") {
+        setEmailError("User not found. Please sign up");
+      } else if (response.data === "Password not match") {
+        setPasswordError("Invalid password");
+      } else {
+        setEmailError("Login failed. Please try again.");
       }
-      console.log(e);
+    } catch (error) {
+      console.error("Login error:", error);
+      setEmailError("Server error. Please try again later.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (loading) {
-    return <div className="mt-52">Loading...</div>;
-  }
-
-  //for password
-  const showpassword = () => {
-    var pass = document.getElementById("password");
-    var check = document.getElementById("show");
-    if (check.checked == true) pass.type = "text";
-    else pass.type = "password";
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
-    <section className="bg-gray-50 dark:bg-white content-around overflow-hidden mt-32 lg:mt-0">
-      <div className="flex flex-col m-5 ml-9 items-center justify-center p-2 mx-auto md:h-screen lg:py-0">
-        <div className="w-full bg-white rounded-lg shadow-lg p-6 relative dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-white dark:border-gray-200">
-          <div className=" space-y-4 md:space-y-6 sm:p-8">
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-gray-900">
-              Welcome Back!!
-            </h1>
-            <form className="space-y-5 md:space-y-5 " action="POST">
-              <div className="relative z-0 w-full mb-5 group">
-                <input
-                  type="email"
-                  name="floating_email"
-                  id="email"
-                  className="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none  dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                  placeholder=" "
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                  }} //for getting user input value
-                  required
-                />
-                <label
-                  for="floating_email"
-                  className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 rtl:peer-focus:translate-x-1/4 rtl:peer-focus:left-auto peer-focus:text-blue-600 peer-focus:dark:text-blue-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
-                >
-                  Email address
-                </label>
-                <div className="text-red-600 text-xs">{ee}</div>
+    <div className="min-h-screen bg-white ml-10 max-sm:ml-0 max-sm:-mr-8 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Login Card */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header with logo */}
+          <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center relative">
+            <div className="absolute top-0 right-0 p-4">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg -z-50">
+                <i className="bx bxs-restaurant text-4xl text-green-500"></i>
               </div>
-              <div className="relative z-0 w-full mb-5 group">
-                <input
-                  type="password"
-                  name="floating_password"
-                  id="password"
-                  className="block py-2.5 px-0 w-full text-sm text-gray-900 bg-transparent border-0 border-b-2 border-gray-300 appearance-none dark:text-black dark:border-gray-600 dark:focus:border-blue-500 focus:outline-none focus:ring-0 focus:border-blue-600 peer"
-                  placeholder=" "
-                  maxLength={12}
-                  minLength={8}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                  }}
-                  required
-                />
-                <label
-                  for="floating_password"
-                  className="peer-focus:font-medium absolute text-sm text-gray-500 dark:text-gray-400 duration-300 transform -translate-y-6 scale-75 top-3 -z-10 origin-[0] peer-focus:start-0 rtl:peer-focus:translate-x-1/4 peer-focus:text-blue-600 peer-focus:dark:text-blue-500 peer-placeholder-shown:scale-100 peer-placeholder-shown:translate-y-0 peer-focus:scale-75 peer-focus:-translate-y-6"
-                >
+            </div>
+            <h1 className="text-2xl font-bold mb-1">Welcome Back!</h1>
+            <p className="text-green-100">Sign in to continue to your account</p>
+          </div>
+
+          {/* Form Section */}
+          <div className="p-6 sm:p-8">
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              {/* Email Field */}
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-gray-700 flex items-center">
+                  <i className="bx bx-envelope mr-2 text-green-500"></i>
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    id="email"
+                    className={`w-full px-4 py-3 rounded-lg border ${
+                      emailError ? "border-red-300 bg-red-50" : "border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200`}
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  {emailError && (
+                    <div className="text-red-500 text-xs mt-1 flex items-center">
+                      <i className="bx bx-error-circle mr-1"></i>
+                      {emailError}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-gray-700 flex items-center">
+                  <i className="bx bx-lock-alt mr-2 text-green-500"></i>
                   Password
                 </label>
-                <div className="text-red-600 text-xs">{pe}</div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    className={`w-full px-4 py-3 rounded-lg border ${
+                      passwordError ? "border-red-300 bg-red-50" : "border-gray-300"
+                    } focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200`}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    maxLength={12}
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={togglePasswordVisibility}
+                  >
+                    <i className={`bx ${showPassword ? "bx-hide" : "bx-show"} text-xl`}></i>
+                  </button>
+                  {passwordError && (
+                    <div className="text-red-500 text-xs mt-1 flex items-center">
+                      <i className="bx bx-error-circle mr-1"></i>
+                      {passwordError}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Remember Me & Forgot Password */}
               <div className="flex items-center justify-between">
-                <div className="flex items-start">
-                  <div className="flex items-center h-5">
-                    <input
-                      id="show"
-                      aria-describedby="remember"
-                      type="checkbox"
-                      className="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-primary-300 dark:bg-gray-700 dark:border-gray-600 dark:focus:ring-primary-100 dark:ring-offset-gray-800"
-                      required=""
-                      onClick={showpassword}
-                    />
-                  </div>
-                  <div className="ml-3 text-sm">
-                    <label
-                      for="remember"
-                      className="text-gray-500 dark:text-gray-900"
-                    >
-                      Show password
-                    </label>
-                  </div>
+                <div className="flex items-center">
+                  <input
+                    id="remember"
+                    type="checkbox"
+                    className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+                    Remember me
+                  </label>
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-500"
+                  className="text-sm font-medium text-green-600 hover:text-green-800 transition-colors"
                 >
                   Forgot password?
                 </Link>
               </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full hover:h-11 cursor-pointer text-white bg-primary-600 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-green-700 dark:hover:bg-green-800 dark:focus:ring-primary-100"
-                onClick={submit}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3 rounded-lg font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center"
               >
-                Sign in
+                {loading ? (
+                  <>
+                    <i className="bx bx-loader-alt bx-spin mr-2"></i>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <i className="bx bx-log-in-circle mr-2"></i>
+                    Sign in
+                  </>
+                )}
               </button>
-              <p className="text-sm font-light text-gray-800 dark:text-gray-700">
-                Don’t have an account yet?{" "}
-                <Link
-                  to="/signup"
-                  className="font-medium text-primary-600 hover:underline dark:text-primary-500"
-                >
-                  Sign up
-                </Link>
-              </p>
+
+              {/* Sign Up Link */}
+              <div className="text-center mt-6">
+                <p className="text-gray-600">
+                  Don't have an account?{" "}
+                  <Link to="/signup" className="text-green-600 font-medium hover:text-green-800 transition-colors">
+                    Sign up
+                  </Link>
+                </p>
+              </div>
             </form>
-            
           </div>
         </div>
-      </div>
-      {message && (
-            <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center bg-white">
-                <p className="text-center p-1 text-green-500 flex justify-center items-center gap-2">
-                  {message}
 
-                  <div role="status">
-                    <svg
-                      aria-hidden="true"
-                      class="w-8 h-8 text-gray-200 animate-spin dark:text-gray-100 fill-green-600"
-                      viewBox="0 0 100 101"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                        fill="currentColor"
-                      />
-                      <path
-                        d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                        fill="currentFill"
-                      />
-                    </svg>
-                    <span class="sr-only">Loading...</span>
-                  </div>
-                </p>
-                </div>
-              )}
-    </section>
+        {/* Food decoration elements */}
+        <div className="hidden md:block absolute opacity-10">
+          <i className="bx bxs-pizza text-9xl text-green-500 rotate-12"></i>
+        </div>
+        <div className="hidden md:block absolute opacity-10">
+          <i className="bx bxs-bowl-hot text-9xl text-green-500 -rotate-12"></i>
+        </div>
+      </div>
+
+      {/* Success Message Overlay */}
+      {message && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-sm w-full mx-4 shadow-2xl transform transition-all animate-fadeIn">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                <i className="bx bx-check text-5xl text-green-500"></i>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Login Successful!</h3>
+              <p className="text-gray-500 mb-6">Redirecting you to the dashboard...</p>
+              <div className="flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
