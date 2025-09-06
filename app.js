@@ -3,13 +3,13 @@ import Dine from "./backend/dine.js";
 import collection from "./backend/mongo.js";
 import Food from "./backend/foodM.js";
 import Order from "./backend/order.js";
+import Feedback from "./backend/Feedback.js";
 import cors from "cors";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
-import twilio from 'twilio';
 
 dotenv.config();
 const app = express();
@@ -327,6 +327,7 @@ app.get("/getCartItems", async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    console.log(email)
     const orderData = user.cartitems;
     res.json(orderData);
     await user.save();
@@ -618,6 +619,7 @@ app.get("/getFoodData", async(req,res) => {
     res.status(500).json({ message: err.message });
   }
 })
+
 app.post("/orders", async (req, res) => {
   const { id, date, total, items, phase } = req.body;
   try {
@@ -658,6 +660,111 @@ app.post("/deleteCartItems", async(req,res) => {
     res.status(500).json({message: error.message});
   }
 })
+
+app.get("/orders/invoice/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+
+  try {
+    const order = await Order.findOne({ id: orderId }); // Ensure this matches your database schema
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    res.json(order);
+  } catch (err) {
+    console.error("Error fetching order:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/orders/invoice/download/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+
+  try {
+    // Generate or fetch the PDF file
+    const pdfBuffer = await generateInvoicePDF(orderId); // Replace with your PDF generation logic
+
+    // Set the correct headers
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=Invoice_${orderId}.pdf`);
+
+    // Send the PDF file
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Error generating PDF:", err);
+    res.status(500).json({ message: "Failed to generate PDF" });
+  }
+});
+
+app.post("/feedback", async (req, res) => {
+  const { orderId, email, rating, comment, foodQuality, deliveryTime, packaging } = req.body;
+
+  // Validate required fields
+  if (!orderId || !email || !rating) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
+    // Save feedback to the database
+    const feedback = await Feedback.create({
+      orderId,
+      email,
+      rating,
+      comment,
+      foodQuality,
+      deliveryTime,
+      packaging,
+    });
+    console.log("Feedback saved:", feedback);
+
+    // Email configuration
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    // Email to the restaurant
+    const restaurantMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "bhaktisgharat@gmail.com",
+      subject: `New Feedback for Order #${orderId}`,
+      text: `You have received new feedback for Order #${orderId}:\n\n
+      Rating: ${rating}\n
+      Comment: ${comment}\n
+      Food Quality: ${foodQuality ? "Good" : "Could be better"}\n
+      Delivery Time: ${deliveryTime ? "On time" : "Delayed"}\n
+      Packaging: ${packaging ? "Good" : "Poor"}\n`,
+    };
+
+    // Email to the user
+    const userMailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: `Thank You for Your Feedback!`,
+      text: `Thank you for providing feedback for Order #${orderId}:\n\n
+      Rating: ${rating}\n
+      Comment: ${comment}\n
+      Food Quality: ${foodQuality ? "Good" : "Could be better"}\n
+      Delivery Time: ${deliveryTime ? "On time" : "Delayed"}\n
+      Packaging: ${packaging ? "Good" : "Poor"}\n\n
+      We appreciate your input and will use it to improve our service.`,
+    };
+
+    // Send emails
+    await transporter.sendMail(restaurantMailOptions);
+    console.log("Email sent to restaurant");
+
+    await transporter.sendMail(userMailOptions);
+    console.log("Email sent to user");
+
+    res.status(200).json({ message: "Feedback submitted and emails sent successfully." });
+  } catch (error) {
+    console.error("Error submitting feedback:", error);
+    res.status(500).json({ message: "Failed to submit feedback." });
+  }
+});
 
 app.listen(8000, () => {
   console.log("Server is running on port 8000");

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Cart from './components/UserProfile/cart';
 import Loading from './Loading';
 import PrivateRoute from './PrivateRoute';
+import Invoice from './components/UserProfile/Invoice';
 
 const LazyNavbar = React.lazy(() => import('./components/Home/Navbar'));
 const LazyHome = React.lazy(() => import('./components/Home/Home'));
@@ -16,6 +17,7 @@ const Dine = React.lazy(() => import('./components/Home/Dine'));
 const PaymentGateway = React.lazy(() => import('./components/UserProfile/PaymentGatway'));
 const OrderStatus = React.lazy(() => import('./components/UserProfile/OrderStatus'));
 const NotLogin  = React.lazy(()=> import('./components/NotLogin'));
+
 
 const App = () => {
   useEffect(() => {
@@ -44,6 +46,7 @@ const App = () => {
         <Route path="/profile/*" element={<PrivateRoute><React.Suspense fallback={<Loading />}><UserProfile /></React.Suspense></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><React.Suspense fallback={<Loading />}><UserProfile /></React.Suspense></PrivateRoute>} />
         <Route path="/dine" element={<PrivateRoute><React.Suspense fallback={<Loading />}><Dine /></React.Suspense></PrivateRoute>} />
+        <Route path='/invoice' element={<PrivateRoute><React.Suspense fallback={<Loading />}><Invoice /></React.Suspense></PrivateRoute>} />
       </Routes>
     </Router>
   );

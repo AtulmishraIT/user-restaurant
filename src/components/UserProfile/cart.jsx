@@ -59,15 +59,16 @@ function Cart() {
   const [tipOptions] = useState([10, 20, 50, 100]);
   const [selectedTip, setSelectedTip] = useState(null);
   const [isAddressLoading, setIsAddressLoading] = useState(false);
+  const email = localStorage.getItem("userEmail");
 
   // Calculate totals
   const itemsTotal = data1.reduce(
     (total, item) => total + item.price * item.quantity,
     0
   );
-  const deliveryFee = 50;
+  const deliveryFee = 20;
   const extraDiscount = 20;
-  const gstCharges = (itemsTotal + deliveryFee - extraDiscount) * 0.12;
+  const gstCharges = itemsTotal * 0.12;
   const totalAmount = itemsTotal + deliveryFee - extraDiscount + gstCharges + deliveryTip;
 
   useEffect(() => {
@@ -126,7 +127,6 @@ function Cart() {
 
   useEffect(() => {
     const fetchAddresses = async () => {
-      const email = localStorage.getItem("userEmail");
       if (!email) return;
       
       try {
@@ -303,7 +303,7 @@ function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 -mr-10 mt-12">
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">

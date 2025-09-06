@@ -136,7 +136,7 @@ function Signup() {
   };
 
   return (
-    <div className="min-h-screen -mr-10 bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
         {/* Signup Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -144,7 +144,7 @@ function Signup() {
           <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white relative">
             <div className="absolute top-0 right-0 p-4">
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <i className="bx bxs-restaurant text-4xl text-green-500">AB</i>
+                <i className="bx bxs-restaurant text-4xl text-green-500"></i>
               </div>
             </div>
             <h1 className="text-2xl font-bold mb-1">Create Your Account</h1>
@@ -363,10 +363,10 @@ function Signup() {
         </div>
 
         {/* Food decoration elements */}
-        <div className="hidden md:block absolute -bottom-16 -left-16 opacity-10">
+        <div className="hidden md:block absolute opacity-10">
           <i className="bx bxs-pizza text-9xl text-green-500 rotate-12"></i>
         </div>
-        <div className="hidden md:block absolute -top-20 -right-20 opacity-10">
+        <div className="hidden md:block absolute opacity-10">
           <i className="bx bxs-bowl-hot text-9xl text-green-500 -rotate-12"></i>
         </div>
       </div>

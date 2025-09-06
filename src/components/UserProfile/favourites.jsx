@@ -39,18 +39,20 @@ function Favourites() {
 
   const addToCart = async (foodItem) => {
     try {
+      console.log("Food Item:", foodItem); // Debugging log
+  
       // Fetch existing cart items
       const cartResponse = await axios.get("http://localhost:8000/getCartItems", {
         params: { email },
-      })
-
-      const existingCartItems = cartResponse.data || []
-
+      });
+  
+      const existingCartItems = cartResponse.data || [];
+  
       // Check if the item is already in the cart
-      const itemIndex = existingCartItems.findIndex((item) => item.foodId === foodItem.id)
+      const itemIndex = existingCartItems.findIndex((item) => item.foodId === foodItem.id);
       if (itemIndex !== -1) {
         // If the item is already in the cart, increase the quantity
-        existingCartItems[itemIndex].quantity += 1
+        existingCartItems[itemIndex].quantity += 1;
       } else {
         // If the item is not in the cart, add it with quantity 1
         existingCartItems.push({
@@ -58,42 +60,25 @@ function Favourites() {
           name: foodItem.name,
           image: foodItem.image,
           quantity: 1,
-          price: foodItem.price,
-        })
+          price: foodItem.price, // Ensure this is a valid number
+        });
       }
-
+  
       // Save the updated cart items
       const response = await axios.post("http://localhost:8000/cart/save", {
         email,
         cartItems: existingCartItems,
-      })
-
+      });
+  
       if (response.status === 200) {
-        showNotification("Item added to cart successfully!", "success")
-        localStorage.setItem(foodItem.id, JSON.stringify(existingCartItems))
-        try {
-          // Remove the item from favourites
-          const removeFromFavResponse = await axios.post("http://localhost:8000/deleteFav", {
-            email,
-            foodId: foodItem.id, // Send the foodId to remove from favourites
-          })
-          if (removeFromFavResponse.status === 200) {
-            console.log("Item removed from favourites successfully!")
-            // Update the favData state to remove the item from the UI
-            setFavData(favData.filter((item) => item.id !== foodItem.id))
-          } else {
-            console.error("Failed to remove item from favourites.")
-          }
-        } catch (error) {
-          console.error("Error removing item from favourites:", error)
-          showNotification("There was an error removing the item from favourites.", "error")
-        }
+        showNotification("Item added to cart successfully!", "success");
+        localStorage.setItem(foodItem.id, JSON.stringify(existingCartItems));
       }
     } catch (error) {
-      console.error("Error adding item to cart:", error)
-      showNotification("There was an error adding the item to the cart.", "error")
+      console.error("Error adding item to cart:", error);
+      showNotification("There was an error adding the item to the cart.", "error");
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

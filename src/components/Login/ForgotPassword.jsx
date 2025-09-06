@@ -41,7 +41,7 @@ function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen ml-10 bg-gradient-to-b from-green-50 to-white flex flex-col items-center justify-center p-4">
       {/* Back to login button */}
       <div className="absolute top-4 left-4 z-10">
         <Link 
@@ -58,7 +58,7 @@ function ForgotPassword() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header with logo */}
           <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center relative">
-            <div className="absolute top-0 right-0 p-4">
+            <div className="absolute top-0 right-0 p-4 max-sm:hidden">
               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg">
                 <i className="bx bxs-key text-3xl text-green-500"></i>
               </div>

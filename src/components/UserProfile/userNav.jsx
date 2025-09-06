@@ -21,7 +21,6 @@ import Favourites from "./favourites"
 import Payment from "./payment"
 import UserProfile from "./UserProfile"
 import Order from "./order"
-import Contact from "./contact"
 import Addresses from "./Addresses"
 import Dinein from "./dinein"
 import Login from "../Login/Login"
@@ -47,6 +46,7 @@ function UserNav() {
     localStorage.setItem("activeItem", item)
     if (item === "logout") {
       localStorage.clear()
+      window.location.href = "/login";
     }
     setActiveItem(item)
     setIsMenuOpen(false)
@@ -62,7 +62,6 @@ function UserNav() {
     { path: "favourites", name: "Favourites", icon: <FiHeart size={20} /> },
     { path: "payment", name: "Payment", icon: <FiCreditCard size={20} /> },
     { path: "addresses", name: "Addresses", icon: <FiMapPin size={20} /> },
-    { path: "contact", name: "Contact Us", icon: <FiMessageSquare size={20} /> },
   ]
 
   // Animation variants
@@ -250,7 +249,6 @@ function UserNav() {
             <Route path="payment" element={<Payment />} />
             <Route path="order" element={<Order />} />
             <Route path="Dine" element={<Dinein />} />
-            <Route path="contact" element={<Contact />} />
             <Route path="addresses" element={<Addresses />} />
           </Routes>
         </div>

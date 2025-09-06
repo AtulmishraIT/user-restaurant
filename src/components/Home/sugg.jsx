@@ -96,8 +96,8 @@ function FoodSuggestions() {
   };
 
   return (
-    <div className="w-full max-w-[1500px] mx-auto px-4 md:px-6 lg:px-8">
-      <div className="mt-16 md:mt-20">
+    <div className="w-full max-sm:ml-4 max-w-[1500px] px-4 md:px-6 lg:px-8">
+      <div className="mt-24 md:mt-20">
         {/* Header with logo and title */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
           <div className="flex items-center mb-4 sm:mb-0">
@@ -142,7 +142,7 @@ function FoodSuggestions() {
                 className="px-2 py-1"
                 onMouseEnter={() => setHoveredIndex(index)}
                 onMouseLeave={() => setHoveredIndex(null)}
-              >
+              ><a href="/search">
                 <div 
                   className={`relative rounded-xl overflow-hidden transition-all duration-300 ${
                     hoveredIndex === index ? 'shadow-lg scale-105' : 'shadow-sm'
@@ -164,7 +164,7 @@ function FoodSuggestions() {
                 </div>
                 <div className="mt-2">
                   <p className="text-center text-gray-800 font-medium text-sm truncate">{item.name}</p>
-                </div>
+                </div></a>
               </div>
             ))}
           </Slider>
