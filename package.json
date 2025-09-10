@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "serve -s build"
+    "dev": "vite",
+    "build": "npm build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.8",
