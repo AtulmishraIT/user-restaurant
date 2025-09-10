@@ -18,7 +18,7 @@
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "date-fns": "^4.1.0",
-    "dotenv": "^16.4.7",
+    "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "flowbite": "^2.5.2",
     "flowbite-react": "^0.10.2",
@@ -27,7 +27,7 @@
     "leaflet": "^1.9.4",
     "lucide-react": "^0.501.0",
     "mongoose": "^8.9.0",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^6.10.1",
     "openrouteservice-js": "^0.4.1",
     "process": "^0.11.10",
     "react": "^18.3.1",
@@ -43,7 +43,8 @@
     "react-to-print": "^3.0.6",
     "require": "^0.4.4",
     "slick-carousel": "^1.8.1",
-    "twilio": "^5.4.3"
+    "twilio": "^5.4.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
