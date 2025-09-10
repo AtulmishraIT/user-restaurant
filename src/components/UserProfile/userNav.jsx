@@ -21,7 +21,7 @@ import Favourites from "./favourites"
 import Payment from "./payment"
 import UserProfile from "./UserProfile"
 import Order from "./order"
-import Addresses from "./Addresses"
+import Addresses from "./addresses.jsx"
 import Dinein from "./dinein"
 import Login from "../Login/Login"
 
